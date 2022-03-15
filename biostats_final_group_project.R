@@ -25,7 +25,7 @@ library(msm)
 library(flexsurv)
 
 ##load in dataset
-dt <- fread('/ihme/homes/mwalte10/dt.csv')
+dt <- fread('/ihme/homes/mwalte10/bmt.csv')
 
 
 
@@ -223,8 +223,7 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
 ## Question 4
 {
   dt$sex_match<-ifelse((dt$male==1 & dt$donormale==1)|(dt$male==0 & dt$donormale==0), 1, 0)
-  dt$sex_match<-ifelse(dt$male==0 & dt$donormale==0, dt$sex_match, 0)
-  
+
   surv2<-Surv(dt$tdfs, dt$deltar)
   cox_deltaa2 <- coxph(surv2~deltaa+age+sex_match+cmv+mtx,data=dt)
   summary(cox_deltaa2)
@@ -303,7 +302,7 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
 {
   s.dt = with(dt, Surv(ta, deltaa))
   cox <- coxph(s.dt ~ as.factor(mtx), data = dt)
-  cox_confounders <- coxph(s.dt ~ as.factor(mtx) + as.factor(fab) + as.factor(disgroup), data = dt)
+  cox_confounders <- coxph(s.dt ~ as.factor(mtx) + as.factor(fab) + as.factor(disgroup) + age, data = dt)
   
   surv<-Surv(dt$ta, dt$deltaa)
   surv.nomtx = with(dt[mtx == 0,], Surv(ta, deltaa))
