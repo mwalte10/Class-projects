@@ -1,3 +1,21 @@
+## ---------------------------
+## Script name: biostats_final_group_project
+## Purpose of script: Code for BIOST 537 final project
+##
+## Author: Maggie Walters, Zihan Zheng, Adam Palayew, and Molly Miller-Petrie
+## Date Created: 03-14-2022
+## Email: mwalte10@uw.edu
+## ---------------------------
+##
+## Notes:
+##   
+##
+## ---------------------------
+
+## Used in basically every script
+Sys.umask(mode = "0002")
+
+
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(data.table)
@@ -9,11 +27,14 @@ library(flexsurv)
 ##load in dataset
 dt <- fread('/ihme/homes/mwalte10/dt.csv')
 
+
+
 #####################################################
 #Analysis
 #####################################################
 ## Question 1
 {
+  
   ###cleaning variables-----
   df$X <- NULL
   #survival time
@@ -136,10 +157,17 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
 
 ## Question 2
 {
+  library(survival)
+  library(ggplot2)
   surv<-Surv(dt$tdfs, dt$deltadfs)
   km<-survfit(surv~1, conf.type="log-log")
   plot(km, conf.int=0.95, xlab="Time (days)", ylab="Survival Probability",
        main="KM Estimation of Disease-Free Survival Time")
+  
+  median<-quantile(km, probs=0.5)
+  tab<-cbind(median$quantile, median$lower, median$upper)
+  colnames(tab)<-c("est", "lower", "upper")
+  tab
 }
 
 ## Question 3
@@ -178,9 +206,8 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
   
   #disease group
   dt$disgroup<-as.factor(dt$disgroup)
-  cox_disgroup1 <- coxph(surv~cmv+age+male,data=dt)
-  cox_disgroup2 <- coxph(surv~disgroup+cmv+age+male,data=dt)
-  anova(cox_disgroup1, cox_disgroup2)
+  cox_disgroup <- coxph(surv~disgroup+cmv+age+male,data=dt)
+  summary(cox_disgroup)
   
   #FAB
   dt$fab<-as.factor(dt$fab)
@@ -195,25 +222,26 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
 
 ## Question 4
 {
-  #aGVHD and disease-free survival
+  dt$sex_match<-ifelse((dt$male==1 & dt$donormale==1)|(dt$male==0 & dt$donormale==0), 1, 0)
+  dt$sex_match<-ifelse(dt$male==0 & dt$donormale==0, dt$sex_match, 0)
+  
+  surv2<-Surv(dt$tdfs, dt$deltar)
+  cox_deltaa2 <- coxph(surv2~deltaa+age+sex_match+cmv+mtx,data=dt)
+  summary(cox_deltaa2)
+  
+  cox_deltaa <- coxph(surv~deltaa+age+sex_match+cmv+mtx,data=dt)
+  summary(cox_deltaa)
+  
+  #AFT models
   surv=with(dt, Surv(tdfs, deltadfs))
-  library(flexsurv)
-  dt$sex_match<-ifelse((dt$male==1 & dt$donormale==1) | (dt$male==0 & dt$donormale==0), 1, 0)
   
   gengamma_aft <- flexsurvreg(surv~deltaa+age+sex_match+cmv+mtx,data=dt, dist="gengamma")
   gengamma_aft
   
-  #compute p value
   gengamma_aft.res <- gengamma_aft$res
   gengamma_aft.wald <- gengamma_aft.res[,1]/gengamma_aft.res[,4]
   gengamma_aft.p <- 2*pnorm(-abs(gengamma_aft.wald))
   gengamma_aft.p
-  
-  #aGVHD and relapse
-  surv_relapse<-Surv(dt$tdfs, dt$deltar)
-  cox_deltaa2 <- coxph(surv_relapse~deltaa+age+sex_match+cmv+mtx,data=dt)
-  summary(cox_deltaa2)
-  
 }
 
 ## Question 5
@@ -290,12 +318,9 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
 
 ## Question 7
 {
-  #Cox PH  for recovery of normal platelet levels vs. disease-free survival
-  surv<-Surv(dt$tdfs, dt$deltadfs)
   coxfit = coxph(surv~deltap+age+male+disgroup+mtx,data=dt)
   summary(coxfit)
   
-  #AFT  for recovery of normal platelet levels vs. disease-free survival
   gengamma_aft <- flexsurvreg(surv~deltap+age+male+disgroup+mtx,data=dt, dist="gengamma")
   gengamma_aft
   
@@ -304,10 +329,10 @@ dt <- fread('/ihme/homes/mwalte10/dt.csv')
   gengamma_aft.p <- 2*pnorm(-abs(gengamma_aft.wald))
   gengamma_aft.p
   
-  #Cox PH  for recovery of normal platelet levels vs. relapse
   surv_relapse<-Surv(dt$tdfs, dt$deltar)
   coxfit2 = coxph(surv_relapse~deltap+age+male+disgroup+mtx,data=dt)
   summary(coxfit2)
+
   
 }
 
